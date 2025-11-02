@@ -13,14 +13,16 @@ using namespace NetworkAnalytical;
 namespace NetworkAnalyticalCongestionAware {
 
 /**
- * Implements a ring topology.
+ * Implements a 2DTorus topology.
  *
- * Ring(8) example:
- * 0 - 1 - 2 - 3
- * |           |
- * 7 - 6 - 5 - 4
+ * 2DTorus(8) example:
+ *    ________________
+ *   |_0 - 1 - 2 - 3_|
+ *     |   |   |   | 
+ *    _7 - 6 - 5 - 4_
+ *   |_______________|
  *
- * Therefore, the number of NPUs and devices are both 8.
+ * The number of NPUs and devices are both 8.
  *
  * If ring is uni-directional, then each chunk can flow through:
  * 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 0
@@ -29,7 +31,7 @@ namespace NetworkAnalyticalCongestionAware {
  * 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 0
  * 0 <- 1 <- 2 <- 3 <- 4 <- 5 <- 6 <- 7 <- 0
  */
-class Ring final : public BasicTopology {
+class Torus2D final : public BasicTopology {
   public:
     /**
      * Constructor.
@@ -39,7 +41,7 @@ class Ring final : public BasicTopology {
      * @param latency latency of link
      * @param bidirectional true if ring is bidirectional, false otherwise
      */
-    Ring(int npus_count,
+    Torus2D(int npus_count,
          Bandwidth bandwidth,
          Latency latency,
          bool bidirectional = true,
@@ -61,8 +63,14 @@ class Ring final : public BasicTopology {
     [[nodiscard]] std::vector<ConnectionPolicy> get_connection_policies() const noexcept override;
 
   private:
+
+    bool is_faulty(int src, int dst) const;
     /// true if the ring is bidirectional, false otherwise
     bool bidirectional;
+
+    std::vector<std::pair<int, int> > faulty_links;
+
+
 };
 
 }  // namespace NetworkAnalyticalCongestionAware

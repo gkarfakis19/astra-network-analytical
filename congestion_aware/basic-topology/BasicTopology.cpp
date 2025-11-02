@@ -12,7 +12,8 @@ using namespace NetworkAnalyticalCongestionAware;
 BasicTopology::BasicTopology(const int npus_count,
                              const int devices_count,
                              const Bandwidth bandwidth,
-                             const Latency latency) noexcept
+                             const Latency latency,
+                             const bool is_multi_dim) noexcept
     : bandwidth(bandwidth),
       latency(latency),
       basic_topology_type(TopologyBuildingBlock::Undefined),
@@ -41,4 +42,8 @@ TopologyBuildingBlock BasicTopology::get_basic_topology_type() const noexcept {
     assert(basic_topology_type != TopologyBuildingBlock::Undefined);
 
     return basic_topology_type;
+}
+
+Latency BasicTopology::get_link_latency() const noexcept {
+    return latency;
 }

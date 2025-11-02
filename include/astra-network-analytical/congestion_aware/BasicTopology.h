@@ -7,6 +7,8 @@ LICENSE file in the root directory of this source tree.
 
 #include "common/Type.h"
 #include "congestion_aware/Topology.h"
+#include <cstdlib>
+#include <iostream>
 
 using namespace NetworkAnalytical;
 
@@ -27,7 +29,8 @@ class BasicTopology : public Topology {
      * @param bandwidth bandwidth of each link
      * @param latency latency of each link
      */
-    BasicTopology(int npus_count, int devices_count, Bandwidth bandwidth, Latency latency) noexcept;
+    BasicTopology(
+        int npus_count, int devices_count, Bandwidth bandwidth, Latency latency, bool is_multi_dim = false) noexcept;
 
     /**
      * Destructor.
@@ -41,6 +44,16 @@ class BasicTopology : public Topology {
      * @return type of the basic topology
      */
     [[nodiscard]] TopologyBuildingBlock get_basic_topology_type() const noexcept;
+
+    /**
+     * Get connection policies of the basic topology.
+     * Each connection policy is represented as a pair of (src, dest) device ids.
+     *
+     * @return list of connection policies
+     */
+    [[nodiscard]] virtual inline std::vector<ConnectionPolicy> get_connection_policies() const noexcept = 0;
+
+    [[nodiscard]] virtual Latency get_link_latency() const noexcept;
 
   protected:
     /// bandwidth of each link

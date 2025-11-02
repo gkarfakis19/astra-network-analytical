@@ -6,6 +6,8 @@ LICENSE file in the root directory of this source tree.
 #include "congestion_unaware/Helper.h"
 #include "congestion_unaware/BasicTopology.h"
 #include "congestion_unaware/FullyConnected.h"
+#include "congestion_unaware/HyperCube.h"
+#include "congestion_unaware/Mesh.h"
 #include "congestion_unaware/MultiDimTopology.h"
 #include "congestion_unaware/Ring.h"
 #include "congestion_unaware/Switch.h"
@@ -40,6 +42,10 @@ std::shared_ptr<Topology> NetworkAnalyticalCongestionUnaware::construct_topology
             return std::make_shared<Switch>(npus_count, bandwidth, latency);
         case TopologyBuildingBlock::FullyConnected:
             return std::make_shared<FullyConnected>(npus_count, bandwidth, latency);
+        case TopologyBuildingBlock::Mesh:
+            return std::make_shared<Mesh>(npus_count, bandwidth, latency);
+        case TopologyBuildingBlock::HyperCube:
+            return std::make_shared<HyperCube>(npus_count, bandwidth, latency);
         default:
             // shouldn't reach here
             std::cerr << "[Error] (network/analytical/congestion_unaware)" << "Not supported topology" << std::endl;
@@ -69,6 +75,12 @@ std::shared_ptr<Topology> NetworkAnalyticalCongestionUnaware::construct_topology
             break;
         case TopologyBuildingBlock::FullyConnected:
             dim_topology = std::make_unique<FullyConnected>(npus_count, bandwidth, latency);
+            break;
+        case TopologyBuildingBlock::Mesh:
+            dim_topology = std::make_unique<Mesh>(npus_count, bandwidth, latency);
+            break;
+        case TopologyBuildingBlock::HyperCube:
+            dim_topology = std::make_unique<HyperCube>(npus_count, bandwidth, latency);
             break;
         default:
             // shouldn't reach here

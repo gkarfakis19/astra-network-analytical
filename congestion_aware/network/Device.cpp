@@ -7,6 +7,7 @@ LICENSE file in the root directory of this source tree.
 #include "congestion_aware/Chunk.h"
 #include "congestion_aware/Link.h"
 #include <cassert>
+#include <iostream>
 
 using namespace NetworkAnalyticalCongestionAware;
 
@@ -33,7 +34,7 @@ void Device::send(std::unique_ptr<Chunk> chunk) noexcept {
     // get next dest
     const auto next_dest = chunk->next_device();
     const auto next_dest_id = next_dest->get_id();
-
+    //std::cout<<"source:" << device_id <<"dest node:" << next_dest_id << std::endl;
     // assert the next dest is connected to this node
     assert(connected(next_dest_id));
 
@@ -48,7 +49,11 @@ void Device::connect(const DeviceId id, const Bandwidth bandwidth, const Latency
     assert(latency >= 0);
 
     // assert there's no existing connection
-    assert(!connected(id));
+    // assert(!connected(id));
+    if (connected(id)) {
+        std::cout << "Device " << device_id << " already connected to Device " << id << "." << std::endl;
+        return;
+    }
 
     // create link
     links[id] = std::make_shared<Link>(bandwidth, latency);

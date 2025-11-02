@@ -3,12 +3,12 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 *******************************************************************************/
 
-#include "congestion_aware/Switch.h"
+#include "congestion_aware/Bus.h"
 #include <cassert>
 
 using namespace NetworkAnalyticalCongestionAware;
 
-Switch::Switch(const int npus_count, const Bandwidth bandwidth, const Latency latency, const bool is_multi_dim) noexcept
+Bus::Bus(const int npus_count, const Bandwidth bandwidth, const Latency latency) noexcept
     : BasicTopology(npus_count, npus_count + 1, bandwidth, latency) {
     // e.g., if npus_count=8, then
     // there are total 9 devices, where ordinary npus are 0-7, and switch is 8
@@ -17,20 +17,18 @@ Switch::Switch(const int npus_count, const Bandwidth bandwidth, const Latency la
     assert(latency >= 0);
 
     // set topology type
-    basic_topology_type = TopologyBuildingBlock::Switch;
+    basic_topology_type = TopologyBuildingBlock::Bus;
 
     // set switch id
-    switch_id = npus_count;
+    bus_id = npus_count;
 
     // connect npus and switches, the link should be bidirectional
-    if (!is_multi_dim) {
-        for (auto i = 0; i < npus_count; i++) {
-            connect(i, switch_id, bandwidth, latency, true);
-        }
+    for (auto i = 0; i < npus_count; i++) {
+        connect(i, bus_id, bandwidth, latency, true);
     }
 }
 
-Route Switch::route(DeviceId src, DeviceId dest) const noexcept {
+Route Bus::route(DeviceId src, DeviceId dest) const noexcept {
     // assert npus are in valid range
     assert(0 <= src && src < npus_count);
     assert(0 <= dest && dest < npus_count);
@@ -38,19 +36,20 @@ Route Switch::route(DeviceId src, DeviceId dest) const noexcept {
     // construct route
     // start at source, and go to switch, then go to destination
     auto route = Route();
+    
     route.push_back(devices[src]);
-    route.push_back(devices[switch_id]);
+    route.push_back(devices[bus_id]);
     route.push_back(devices[dest]);
 
     return route;
 }
 
-std::vector<ConnectionPolicy> Switch::get_connection_policies() const noexcept {
+std::vector<ConnectionPolicy> Bus::get_connection_policies() const noexcept {
     std::vector<ConnectionPolicy> policies;
 
     for (auto i = 0; i < npus_count; i++) {
-        policies.emplace_back(i, switch_id);
-        policies.emplace_back(switch_id, i);
+        policies.emplace_back(ConnectionPolicy{i, bus_id});
+        policies.emplace_back(ConnectionPolicy{bus_id, i});
     }
 
     return policies;

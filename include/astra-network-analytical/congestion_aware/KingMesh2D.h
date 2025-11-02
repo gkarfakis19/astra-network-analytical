@@ -13,14 +13,16 @@ using namespace NetworkAnalytical;
 namespace NetworkAnalyticalCongestionAware {
 
 /**
- * Implements a ring topology.
+ * Implements a 2DTorus topology.
  *
- * Ring(8) example:
- * 0 - 1 - 2 - 3
- * |           |
- * 7 - 6 - 5 - 4
+ * 2DTorus(8) example:
+ *    
+ *   0 - 1 - 2 - 3
+ *   | X | X | X | 
+ *   7 - 6 - 5 - 4
+ *   
  *
- * Therefore, the number of NPUs and devices are both 8.
+ * The number of NPUs and devices are both 8.
  *
  * If ring is uni-directional, then each chunk can flow through:
  * 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 0
@@ -29,7 +31,7 @@ namespace NetworkAnalyticalCongestionAware {
  * 0 -> 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 0
  * 0 <- 1 <- 2 <- 3 <- 4 <- 5 <- 6 <- 7 <- 0
  */
-class Ring final : public BasicTopology {
+class KingMesh2D final : public BasicTopology {
   public:
     /**
      * Constructor.
@@ -39,7 +41,7 @@ class Ring final : public BasicTopology {
      * @param latency latency of link
      * @param bidirectional true if ring is bidirectional, false otherwise
      */
-    Ring(int npus_count,
+    KingMesh2D(int npus_count,
          Bandwidth bandwidth,
          Latency latency,
          bool bidirectional = true,

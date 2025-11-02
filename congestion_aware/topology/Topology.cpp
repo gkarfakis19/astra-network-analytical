@@ -64,7 +64,7 @@ void Topology::send(std::unique_ptr<Chunk> chunk) noexcept {
     assert(0 <= src && src < devices_count);
 
     // initiate transmission from src
-    devices[src]->send(std::move(chunk));
+    devices.at(src)->send(std::move(chunk));
 }
 
 void Topology::connect(const DeviceId src,
@@ -81,13 +81,41 @@ void Topology::connect(const DeviceId src,
     assert(latency >= 0);
 
     // connect src -> dest
-    devices[src]->connect(dest, bandwidth, latency);
+    if (src == 2 || src == 14){
+        devices.at(src)->connect(dest, bandwidth * 0.9, latency);
+    }
+    else{
+        devices.at(src)->connect(dest, bandwidth, latency);
+    }
 
     // if bidirectional, connect dest -> src
     if (bidirectional) {
-        devices[dest]->connect(src, bandwidth, latency);
+        devices.at(dest)->connect(src, bandwidth, latency);
     }
 }
+
+void Topology::bus_connect(const DeviceId src,
+                       const DeviceId dest,
+                       const Bandwidth bandwidth,
+                       const Latency latency,
+                       const bool bidirectional) noexcept {
+    // assert the src and dest are valid
+    assert(0 <= src && src < devices_count);
+    assert(0 <= dest && dest < devices_count);
+
+    // assert bandwidth and latency are valid
+    assert(bandwidth > 0);
+    assert(latency >= 0);
+
+    // connect src -> dest
+    devices.at(src)->connect(dest, bandwidth, latency);
+
+    // if bidirectional, connect dest -> src
+    if (bidirectional) {
+        devices.at(dest)->connect(src, bandwidth, latency);
+    }
+}
+
 
 void Topology::instantiate_devices() noexcept {
     // instantiate all devices

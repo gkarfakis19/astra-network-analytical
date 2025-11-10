@@ -80,7 +80,7 @@ std::shared_ptr<Topology> NetworkAnalyticalCongestionAware::construct_topology(
             switch (topology_type) {
             case TopologyBuildingBlock::Ring:
                 dim_topology =
-                    std::make_unique<Ring>(npus_count, bandwidth, latency, /* bidirectional = */ false, is_multi_dim);
+                    std::make_unique<Ring>(npus_count, bandwidth, latency, /* bidirectional = */ true, is_multi_dim);
                 break;
             case TopologyBuildingBlock::Switch:
                 dim_topology = std::make_unique<Switch>(npus_count, bandwidth, latency, is_multi_dim);

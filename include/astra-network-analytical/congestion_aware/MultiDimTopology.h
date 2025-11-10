@@ -66,6 +66,8 @@ class MultiDimTopology : public Topology {
 
     [[nodiscard]] DeviceId translate_address_back(const MultiDimAddress multi_dim_address) const noexcept;
 
+    [[nodiscard]] Route routeHelper(DeviceId src, DeviceId dest, const std::vector<int>& routing_dimensions) const noexcept;
+
     /**
      * Given src and dest address in multi-dimensional form,
      * return the dimension where the transfer should happen.

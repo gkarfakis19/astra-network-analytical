@@ -12,6 +12,7 @@ LICENSE file in the root directory of this source tree.
 #include <functional>
 #include <iostream>
 #include <numeric>
+#include <utility>
 
 namespace NetworkAnalyticalCongestionAware {
 
@@ -27,6 +28,20 @@ MultiDimTopology::MultiDimTopology(const std::vector<std::tuple<int, int, double
 }
 
 Route MultiDimTopology::route(DeviceId src, DeviceId dest) const noexcept {
+    // build up diemnsion
+    std::vector<int> routing_dimensions;
+    for (int dim_to_transfer = dims_count - 1; dim_to_transfer >= 0; dim_to_transfer--) {
+        routing_dimensions.push_back(dim_to_transfer);
+    }
+
+    // call
+    return routeHelper(src, dest, routing_dimensions);
+
+}
+
+Route MultiDimTopology::routeHelper(DeviceId src, DeviceId dest, const std::vector<int>& routing_dimensions) const noexcept {
+    //std::cout << "[DEBUG] Beginning of the function - source and destination: " << src << dest << std::endl;
+
     // // assert npus are in valid range
     assert(0 <= src && src < npus_count);
     assert(0 <= dest && dest < npus_count);
@@ -41,10 +56,10 @@ Route MultiDimTopology::route(DeviceId src, DeviceId dest) const noexcept {
     MultiDimAddress last_dest_address{src_address};
     DeviceId last_dest{src};
 
-    for (int dim_to_transfer = dims_count - 1; dim_to_transfer >= 0; dim_to_transfer--) {
+    for (const auto dim_to_transfer : routing_dimensions) {
         // if index in the current dimension is the same, skip
         if (src_address.at(dim_to_transfer) != dest_address.at(dim_to_transfer)) {
-            
+           
             // find destination in next dimension
             MultiDimAddress next_dim_dest_address{last_dest_address};
             next_dim_dest_address.at(dim_to_transfer) = dest_address.at(dim_to_transfer);
@@ -84,12 +99,95 @@ Route MultiDimTopology::route(DeviceId src, DeviceId dest) const noexcept {
                 route_in_dim.push_back(devices.at(global_device_id));
             }
 
+            // we have finished the route_in_dim
+            std::vector<DeviceId> route_id;
+            for (const auto device : route_in_dim) {
+                route_id.push_back(device->get_id());
+            }
+            //std::cout << "[DEBUG] Route in dimension before fault check: ";
+            //for (auto id : route_id) std::cout << id << " ";
+            //std::cout << std::endl;
+
+            bool meet_fault = false;
+            for (int i = 0; i < (int)route_id.size() - 1; i++) {
+                double derate = fault_derate(route_id.at(i), route_id.at(i + 1));
+                //std::cout << "[DEBUG] Checking link (" << route_id.at(i)
+                //        << " -> " << route_id.at(i + 1)
+                //        << "), derate = " << derate << std::endl;
+
+                if (derate == 0.0) {
+                    //std::cout << "[DEBUG] Fault detected between "
+                    //        << route_id.at(i) << " and " << route_id.at(i + 1) << std::endl;
+
+                    auto begin_itr = route_in_dim.begin();
+                    //auto end_itr = route_in_dim.begin();
+                    std::advance(begin_itr, i+1);
+                    //std::advance(end_itr, route_in_dim.size()-1);
+                    route_in_dim.erase(begin_itr, route_in_dim.end());
+                    route_id.erase(route_id.begin()+i+1, route_id.end());
+                    meet_fault = true;
+
+                    //std::cout << "[DEBUG] Truncated route_in_dim after fault at position " << i
+                    //        << ". Remaining: ";
+                    //for (auto d : route_in_dim)
+                    //    std::cout << d->get_id() << " ";
+                    //std::cout << std::endl;
+
+                    break;
+                }
+            }
+
             // Remove duplicate at the junction of segments
             if (!route.empty() && !route_in_dim.empty()) {
+                //std::cout << "[DEBUG] Removing duplicate junction node "
+                //        << route_in_dim.front()->get_id() << std::endl;
                 route_in_dim.pop_front();
             }
+
             // Append to total routing
+            if (!route_in_dim.empty()) {
+                //std::cout << "[DEBUG] Appending route_in_dim to main route. route_in_dim size = "
+                //        << route_in_dim.size() << std::endl;
+            }
             route.splice(route.end(), route_in_dim);
+
+            if (meet_fault) {
+                int last_id = route_id.back(); // global id before fault
+                //std::cout << "[DEBUG] Fault met. last_id = " << last_id << std::endl;
+
+                const auto last_device_addr = translate_address(last_id);
+                //std::cout << "[DEBUG] last_device_addr: ";
+                //for (auto v : last_device_addr) std::cout << v << " ";
+                //std::cout << std::endl;
+
+                auto new_dest_addr{last_device_addr};
+                int next_dim = (dim_to_transfer + 1) % new_dest_addr.size();
+                new_dest_addr.at(next_dim) =
+                    (new_dest_addr.at(next_dim) + 1) % npus_count_per_dim.at(next_dim);
+
+                //std::cout << "[DEBUG] Adjusted new_dest_addr after fault: ";
+                //for (auto v : new_dest_addr) std::cout << v << " ";
+                //std::cout << std::endl;
+                
+                //std::cout << "[DEBUG] destination value: " << dest << std::endl;
+                auto new_dest = translate_address_back(new_dest_addr);
+                //std::cout << "[DEBUG] New destination after fault reroute: " << new_dest << std::endl;
+
+                // use reverse order
+                std::vector<int> new_routing_dimension{routing_dimensions};
+                int swapped_dim = (dim_to_transfer == 0) ? new_routing_dimension.size() - 1 : dim_to_transfer - 1;
+                std::swap(new_routing_dimension.at(dim_to_transfer), new_routing_dimension.at(swapped_dim));
+
+                // find new route
+                auto new_route = this->routeHelper(new_dest, dest, new_routing_dimension);
+                //std::cout << "[DEBUG] Reroute path after fault: ";
+                //for (auto d : new_route)
+                //    std::cout << d->get_id() << " ";
+                //std::cout << std::endl;
+
+                route.splice(route.end(), new_route); // apppend new path
+                return route;
+            }
 
             // update last dest
             last_dest_address = next_dim_dest_address;
@@ -303,10 +401,11 @@ double MultiDimTopology::fault_derate(int src, int dst) const{
         if ((a == src && b == dst) || (a == dst && b == src)) {
             return health;
         }
+        else
+            return 1;
     }
-    return 1.0;
+    return 1;
 }
 
 
 };  // namespace NetworkAnalyticalCongestionAware
-

@@ -24,11 +24,22 @@ namespace NetworkAnalyticalCongestionAware {
 [[nodiscard]] std::vector<std::pair<MultiDimAddress, MultiDimAddress>> generateAddressPairs(
     const MultiDimAddress& upper, const ConnectionPolicy& policy, int dim) noexcept;
 
+[[nodiscard]] std::vector<std::pair<MultiDimAddress, MultiDimAddress>> generateAddressPairs_only_first_nodes(
+    const std::vector<int>& npus_count_per_dim, const ConnectionPolicy& policy, int dim) noexcept;
+
 void generateFreeComb(const MultiDimAddress& upper,
                       int dim,
                       const ConnectionPolicy& policy,
                       std::vector<int>& current,
                       int index,
                       std::vector<std::pair<MultiDimAddress, MultiDimAddress>>& result) noexcept;
+
+void generateFreeComb_only_first_nodes(
+    const MultiDimAddress& upper,
+    int dim,
+    const ConnectionPolicy& policy,
+    MultiDimAddress& current,
+    int index,
+    std::vector<std::pair<MultiDimAddress, MultiDimAddress>>& result) noexcept;
 
 }  // namespace NetworkAnalyticalCongestionAware

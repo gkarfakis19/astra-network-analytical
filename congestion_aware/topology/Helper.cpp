@@ -14,6 +14,7 @@ LICENSE file in the root directory of this source tree.
 #include "congestion_aware/Mesh2D.h"
 #include "congestion_aware/KingMesh2D.h"
 #include "congestion_aware/Switch.h"
+#include "congestion_aware/HyperCube.h"
 #include <cstdlib>
 #include <iostream>
 
@@ -59,6 +60,8 @@ std::shared_ptr<Topology> NetworkAnalyticalCongestionAware::construct_topology(
             return std::make_shared<Mesh2D>(npus_count, bandwidth, latency, faulty_links);
         case TopologyBuildingBlock::KingMesh2D:
             return std::make_shared<KingMesh2D>(npus_count, bandwidth, latency);
+        case TopologyBuildingBlock::HyperCube:
+            return std::make_shared<HyperCube>(npus_count, bandwidth, latency, faulty_links);
         default:
             // shouldn't reaach here
             std::cerr << "[Error] (network/analytical/congestion_aware) "
@@ -106,6 +109,10 @@ std::shared_ptr<Topology> NetworkAnalyticalCongestionAware::construct_topology(
             case TopologyBuildingBlock::Mesh2D:
                 dim_topology = std::make_unique<Mesh2D>(npus_count, bandwidth, latency, is_multi_dim);
                 break;
+            case TopologyBuildingBlock::HyperCube:
+                dim_topology =
+                    std::make_unique<HyperCube>(npus_count, bandwidth, latency, /* bidirectional = */ true, is_multi_dim);
+                break;
 
             default:
                 // shouldn't reach here
@@ -135,6 +142,23 @@ std::vector<std::pair<MultiDimAddress, MultiDimAddress>> NetworkAnalyticalConges
     return result;
 }
 
+std::vector<std::pair<MultiDimAddress, MultiDimAddress>>
+NetworkAnalyticalCongestionAware::generateAddressPairs_only_first_nodes(
+    const std::vector<int>& npus_count_per_dim,
+    const ConnectionPolicy& policy,
+    int dim) noexcept
+{
+    std::vector<std::pair<MultiDimAddress, MultiDimAddress>> result;
+
+    MultiDimAddress upper(npus_count_per_dim.begin(), npus_count_per_dim.end());
+    MultiDimAddress current(upper.size(), 0);
+
+    generateFreeComb_only_first_nodes(upper, dim, policy, current, 0, result);
+
+    return result;
+}
+
+
 void NetworkAnalyticalCongestionAware::generateFreeComb(
     const MultiDimAddress& upper,
     int dim,
@@ -160,3 +184,37 @@ void NetworkAnalyticalCongestionAware::generateFreeComb(
         }
     }
 }
+
+void NetworkAnalyticalCongestionAware::generateFreeComb_only_first_nodes(
+    const MultiDimAddress& upper,
+    int dim,
+    const ConnectionPolicy& policy,
+    MultiDimAddress& current,
+    int index,
+    std::vector<std::pair<MultiDimAddress, MultiDimAddress>>& result) noexcept
+{
+    if (index == (int)upper.size()) {
+        result.push_back({current, current});
+        result.back().first[dim]  = policy.src;
+        result.back().second[dim] = policy.dst;
+        return;
+    }
+
+    if (index < dim) {
+        // NON-RECURSIVE MODE: only take the FIRST node in this dimension
+        current[index] = 0;
+        generateFreeComb_only_first_nodes(upper, dim, policy, current, index + 1, result);
+    }
+    else if (index == dim) {
+        // same behavior as original code
+        generateFreeComb_only_first_nodes(upper, dim, policy, current, index + 1, result);
+    }
+    else {
+        // FULL recursion for dimensions > dim
+        for (int i = 0; i < upper[index]; ++i) {
+            current[index] = i;
+            generateFreeComb_only_first_nodes(upper, dim, policy, current, index + 1, result);
+        }
+    }
+}
+

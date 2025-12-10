@@ -88,13 +88,13 @@ void NetworkParser::parse_network_config_yml(const YAML::Node& network_config) n
     latency_per_dim = parse_vector<Latency>(network_config["latency"]);
     if (network_config["non_recursive_topology"]) {
         non_recursive_topo = parse_vector<int>(network_config["non_recursive_topology"]);
-        if (std::all_of(non_recursive_topo.begin(), non_recursive_topo.end(),
-                    [](int x){ return x == 0; })) {
-        std::fill(non_recursive_topo.begin(), non_recursive_topo.end(), 1);
-        }
+        //if (std::all_of(non_recursive_topo.begin(), non_recursive_topo.end(),
+        //            [](int x){ return x == 0; })) {
+        //std::fill(non_recursive_topo.begin(), non_recursive_topo.end(), 1);
+        //}
     }
     else{
-        std::fill(non_recursive_topo.begin(), non_recursive_topo.end(), 1);
+        std::fill(non_recursive_topo.begin(), non_recursive_topo.end(), 0);
     }
 
     // check the validity of the parsed network config

@@ -233,10 +233,20 @@ void MultiDimTopology::make_connections() noexcept {
         const auto topology = m_topology_per_dim.at(dim).get();
         const auto policies = topology->get_connection_policies();
         assert(policies.size() != 0);
+        bool non_recursive = (non_recursive_topo.at(dim) == 1);
+        std::vector<std::pair<MultiDimAddress, MultiDimAddress>> address_pairs;
 
         for (const auto& policy : policies) {
-            std::vector<std::pair<MultiDimAddress, MultiDimAddress>> address_pairs =
-                generateAddressPairs(npus_count_per_dim, policy, dim);
+            if (!non_recursive) {
+                address_pairs = generateAddressPairs(npus_count_per_dim, policy, dim);
+            }
+
+            // --- RECURSIVE MODE: only first nodes of lower dimensions ---
+            else {
+                address_pairs = generateAddressPairs_only_first_nodes(npus_count_per_dim, policy, dim);
+            }
+            //std::vector<std::pair<MultiDimAddress, MultiDimAddress>> address_pairs =
+            //    generateAddressPairs(npus_count_per_dim, policy, dim);
             for (const auto& address_pair : address_pairs) {
                 // translate to device ID, depending on switch or not
 
@@ -250,9 +260,9 @@ void MultiDimTopology::make_connections() noexcept {
                 assert(0 <= dest && dest < devices_count);
                 //simulate non_recursive topology
                 double scale_factor = 1.0;
-                if(non_recursive_topo.at(dim) == 0){
-                    scale_factor = 0.5;
-                }
+                //if(non_recursive_topo.at(dim) == 0){
+                //    scale_factor = 0.5;
+                //}
 
                 // make connection
                 const auto bandwidth = bandwidth_per_dim.at(dim);
@@ -407,11 +417,36 @@ double MultiDimTopology::fault_derate(int src, int dst) const{
         if ((a == src && b == dst) || (a == dst && b == src)) {
             return health;
         }
-        else
-            return 1;
+        //else
+        //    return 1;
     }
     return 1;
 }
+
+
+// std::vector<std::pair<MultiDimAddress, MultiDimAddress>>
+// generateAddressPairs_only_first_nodes(const std::vector<int>& npus_count_per_dim,
+//                                       const ConnectionPolicy& policy,
+//                                       int dim)
+// {
+//     std::vector<std::pair<MultiDimAddress, MultiDimAddress>> result;
+
+//     MultiDimAddress addr(npus_count_per_dim.size());
+
+//     // Only vary dim, all other dims = 0
+//     for (int d = 0; d < (int)npus_count_per_dim[dim]; d++) {
+//         addr[dim] = d;
+//         MultiDimAddress src = addr;
+//         MultiDimAddress dst = addr;
+
+//         src[dim] = policy.src;
+//         dst[dim] = policy.dst;
+
+//         result.emplace_back(src, dst);
+//     }
+
+//     return result;
+// }
 
 
 void MultiDimTopology::make_non_recursive_connections() noexcept {
@@ -422,37 +457,55 @@ void MultiDimTopology::make_non_recursive_connections() noexcept {
     }
 
     for (int dim = 0; dim < dims_count; dim++) {
-        // intra-dim connections
-        const auto topology = m_topology_per_dim.at(dim).get();
-        const auto policies = topology->get_connection_policies();
-        assert(policies.size() != 0);
+    const auto topology = m_topology_per_dim.at(dim).get();
+    const auto policies = topology->get_connection_policies();
+    assert(!policies.empty());
+
+    bool recursive_dim = (non_recursive_topo.at(dim) == 1);
 
         for (const auto& policy : policies) {
-            std::vector<std::pair<MultiDimAddress, MultiDimAddress>> address_pairs =
-                generateAddressPairs(npus_count_per_dim, policy, dim);
-            for (const auto& address_pair : address_pairs) {
-                // translate to device ID, depending on switch or not
 
-                const auto src = is_switch(address_pair.first)
-                                     ? m_switch_translation_unit.value().translate_address_to_id(address_pair.first)
-                                     : translate_address_back(address_pair.first);
-                const auto dest = is_switch(address_pair.second)
-                                      ? m_switch_translation_unit.value().translate_address_to_id(address_pair.second)
-                                      : translate_address_back(address_pair.second);
+            std::vector<std::pair<MultiDimAddress, MultiDimAddress>> address_pairs;
+
+            // --- NORMAL MODE ---
+            if (!recursive_dim) {
+                address_pairs =
+                    generateAddressPairs(npus_count_per_dim, policy, dim);
+            }
+
+            // --- RECURSIVE MODE: only first nodes of lower dimensions ---
+            else {
+                address_pairs =
+                    generateAddressPairs(npus_count_per_dim, policy, dim);
+            }
+
+            // Create links for all generated pairs
+            for (const auto& ap : address_pairs) {
+
+                const auto src = is_switch(ap.first)
+                                    ? m_switch_translation_unit.value().translate_address_to_id(ap.first)
+                                    : translate_address_back(ap.first);
+
+                const auto dest = is_switch(ap.second)
+                                    ? m_switch_translation_unit.value().translate_address_to_id(ap.second)
+                                    : translate_address_back(ap.second);
+
                 assert(0 <= src && src < devices_count);
                 assert(0 <= dest && dest < devices_count);
 
-                // make connection
-                const auto bandwidth = bandwidth_per_dim.at(dim);
-                const auto latency = topology->get_link_latency();
-                if(fault_derate(src, dest) != 0)
-                    connect(src, dest, bandwidth * fault_derate(src, dest), latency, false);
+                const auto bw = bandwidth_per_dim.at(dim);
+                const auto lat = topology->get_link_latency();
+
+                if (fault_derate(src, dest) != 0)
+                    connect(src, dest, bw * fault_derate(src, dest), lat, false);
                 else
-                    connect(src, dest, bandwidth, latency, false);  //might be removable
+                    connect(src, dest, bw, lat, false);
             }
         }
     }
+
 }
+
 
 
 };  // namespace NetworkAnalyticalCongestionAware

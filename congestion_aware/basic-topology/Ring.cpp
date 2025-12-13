@@ -27,21 +27,20 @@ Ring::Ring(const int npus_count,
     Ring::basic_topology_type = TopologyBuildingBlock::Ring;
 
     if (!is_multi_dim) {
-        double scale_factor = 2.0;
         //connect npus in a ring
         for (auto i = 0; i < npus_count - 1; i++) {
             if(fault_derate(i, i+1) != 0){
                     if (fault_derate(i, i+1) != 1)
                         std::cout<<"HERE IS FAULTY_LINK"<<std::endl;
-                    connect(i, i+1, bandwidth * fault_derate(i, i+1) * scale_factor, latency, bidirectional);
+                    connect(i, i+1, bandwidth * fault_derate(i, i+1), latency, bidirectional);
             }
                 else
-                    connect(i, i+1, bandwidth * scale_factor, latency, bidirectional);  //might be removable
+                    connect(i, i+1, bandwidth, latency, bidirectional);  //might be removable
         }
         if(fault_derate(npus_count-1, 0) != 0)
-                connect(npus_count-1, 0, bandwidth * fault_derate(npus_count-1, 0) * scale_factor, latency, bidirectional);
+                connect(npus_count-1, 0, bandwidth * fault_derate(npus_count-1, 0), latency, bidirectional);
             else
-                connect(npus_count-1, 0, bandwidth * scale_factor, latency, bidirectional);  //might be removable
+                connect(npus_count-1, 0, bandwidth, latency, bidirectional);  //might be removable
     }
 
     // this also works
